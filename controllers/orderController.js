@@ -1,5 +1,5 @@
-const Order = require('../models/Order');
-const Product = require('../models/Product');
+const Order = require("../models/Order");
+const Product = require("../models/Product");
 
 exports.createOrder = async (req, res) => {
   try {
@@ -10,11 +10,29 @@ exports.createOrder = async (req, res) => {
 
     for (const item of items) {
       const product = await Product.findById(item.productId);
+
+      if (!product) {
+        return res
+          .status(404)
+          .json({ message: `Product not found: ${item.productId}` });
+      }
+
+      if (product.stock < item.quantity) {
+        return res.status(400).json({
+          message: `Not enough stock for product: ${product.name}`,
+        });
+      }
+
+      // Deduct stock
+      product.stock -= item.quantity;
+      await product.save();
+
       totalAmount += product.price * item.quantity;
+
       orderItems.push({
         productId: item.productId,
         quantity: item.quantity,
-        price: product.price
+        price: product.price,
       });
     }
 
@@ -22,13 +40,13 @@ exports.createOrder = async (req, res) => {
       userId: userId,
       items: orderItems,
       totalAmount: totalAmount,
-      shippingAddress: shippingAddress
+      shippingAddress: shippingAddress,
     });
 
     await order.save();
     res.status(201).json(order);
   } catch (error) {
-    res.status(500).json({ message: 'Order creation failed' });
+    res.status(500).json({ message: "Order creation failed" });
   }
 };
 
@@ -45,9 +63,11 @@ exports.getUserOrders = async (req, res) => {
 // Get single order
 exports.getOrder = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id).populate('items.productId');
+    const order = await Order.findById(req.params.id).populate(
+      "items.productId",
+    );
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ message: "Order not found" });
     }
     res.json(order);
   } catch (error) {
@@ -58,20 +78,20 @@ exports.getOrder = async (req, res) => {
 exports.updateOrder = async (req, res) => {
   try {
     const orderId = req.params.id;
-    
+
     const order = await Order.findByIdAndUpdate(
       orderId,
       {
         shippingAddress: req.body.shippingAddress,
-        status: req.body.status
+        status: req.body.status,
       },
-      { new: true }
+      { new: true },
     );
 
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ message: "Order not found" });
     }
-    
+
     res.json(order);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -86,16 +106,16 @@ exports.updateOrderStatus = async (req, res) => {
     const order = await Order.findByIdAndUpdate(
       orderId,
       { status: newStatus },
-      { new: true }
+      { new: true },
     );
 
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ message: "Order not found" });
     }
 
     res.json(order);
   } catch (error) {
-    res.status(400).json({ message: 'Failed to update status' });
+    res.status(400).json({ message: "Failed to update status" });
   }
 };
 
@@ -104,9 +124,9 @@ exports.deleteOrder = async (req, res) => {
   try {
     const order = await Order.findByIdAndDelete(req.params.id);
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ message: "Order not found" });
     }
-    res.json({ message: 'Order deleted' });
+    res.json({ message: "Order deleted" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
