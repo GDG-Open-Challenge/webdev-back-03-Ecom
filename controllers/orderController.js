@@ -83,6 +83,24 @@ exports.updateOrderStatus = async (req, res) => {
     const orderId = req.params.id;
     const newStatus = req.body.status;
 
+    const allowedStatuses = [
+      "Pending",
+      "Processing",
+      "Shipped",
+      "Delivered",
+      "Cancelled"
+    ];
+
+    if (!newStatus) {
+      return res.status(400).json({ message: "Status is required" });
+    }
+
+    if (!allowedStatuses.includes(newStatus)) {
+      return res.status(400).json({
+        message: `Invalid status. Allowed values: ${allowedStatuses.join(", ")}`
+      });
+    }
+
     const order = await Order.findByIdAndUpdate(
       orderId,
       { status: newStatus },
@@ -90,12 +108,16 @@ exports.updateOrderStatus = async (req, res) => {
     );
 
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ message: "Order not found" });
     }
 
-    res.json(order);
+    res.json({
+      message: "Order status updated successfully",
+      order
+    });
+
   } catch (error) {
-    res.status(400).json({ message: 'Failed to update status' });
+    res.status(400).json({ message: "Failed to update status" });
   }
 };
 
