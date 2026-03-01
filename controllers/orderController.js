@@ -4,16 +4,27 @@ const Product = require('../models/Product');
 exports.createOrder = async (req, res) => {
   try {
     const { userId, items, shippingAddress } = req.body;
-
+    if(!userId || !items || items.length === 0 || !shippingAddress) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
     let totalAmount = 0;
     const orderItems = [];
 
     for (const item of items) {
       const product = await Product.findById(item.productId);
+      if (!product) {
+        return res.status(400).json({
+          message: `Product not found or insufficient stock for productId: ${item.productId}`
+        });
+      }
       if (item.quantity > product.stock) {
         return res.status(400).json({ message: `Insufficient stock for product ${product.name}` });
       }
+
+      product.stock -= item.quantity;
+      await product.save();
       totalAmount += product.price * item.quantity;
+
       orderItems.push({
         productId: item.productId,
         quantity: item.quantity,
@@ -31,7 +42,10 @@ exports.createOrder = async (req, res) => {
     await order.save();
     res.status(201).json(order);
   } catch (error) {
-    res.status(500).json({ message: 'Order creation failed' });
+    res.status(500).json({
+       message: 'Order creation failed' ,
+        error: error.message
+      });
   }
 };
 
