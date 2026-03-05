@@ -58,16 +58,17 @@ exports.getOrder = async (req, res) => {
 exports.updateOrder = async (req, res) => {
   try {
     const orderId = req.params.id;
-    
-    const order = await Order.findByIdAndUpdate(
-      orderId,
+    const userId = req.body.userId;
+
+    const order = await Order.findOneAndUpdate(
+      { _id: orderId, userId: userId },
       {
         shippingAddress: req.body.shippingAddress,
         status: req.body.status
       },
       { new: true }
     );
-
+    
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
