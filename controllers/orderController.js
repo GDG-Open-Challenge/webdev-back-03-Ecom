@@ -10,12 +10,28 @@ exports.createOrder = async (req, res) => {
 
     for (const item of items) {
       const product = await Product.findById(item.productId);
+
+      // ADDED: product existence check
+      if (!product) {
+        return res.status(404).json({ message: 'Product not found' });
+      }
+
+      // ADDED: stock validation
+      if (product.stock < item.quantity) {
+        return res.status(400).json({ message: 'Insufficient stock available' });
+      }
+
       totalAmount += product.price * item.quantity;
+
       orderItems.push({
         productId: item.productId,
         quantity: item.quantity,
         price: product.price
       });
+
+      // ADDED: reduce product stock
+      product.stock -= item.quantity;
+      await product.save();
     }
 
     const order = new Order({
@@ -35,7 +51,10 @@ exports.createOrder = async (req, res) => {
 exports.getUserOrders = async (req, res) => {
   try {
     const userId = req.params.userId;
-    const orders = await Order.find();
+
+    // FIXED: filter orders by userId
+    const orders = await Order.find({ userId });
+
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
