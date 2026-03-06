@@ -5,6 +5,11 @@ exports.createOrder = async (req, res) => {
   try {
     const { userId, items, shippingAddress } = req.body;
 
+    if (!userId || !items || items.length === 0 || !shippingAddress) {
+      return res.status(400).json({ message: 'Missing required order fields' });
+    }
+
+
     let totalAmount = 0;
     const orderItems = [];
 
